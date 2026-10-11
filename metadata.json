@@ -1,0 +1,6 @@
+{
+  "name": "GOODWAY SCIENCE COACHING CENTER",
+  "description": "Production-grade portal for Goodway Science Coaching Center with dedicated Student and Teacher Portals, strict RBAC, and secure notes repository.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
