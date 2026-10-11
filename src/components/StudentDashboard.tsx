@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../AuthContext';
 import { NoteItem, ClassGrade, SubjectName, StreamType } from '../types';
+import { DEFAULT_NOTES_LIST } from '../data/mockData';
 import { 
   Atom, 
   FlaskConical, 
@@ -116,17 +117,32 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         },
       });
 
-      if (res.ok) {
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
         const data = await res.json();
         if (data.success && Array.isArray(data.notes)) {
           setNotes(data.notes);
+          setIsLoading(false);
+          return;
         }
       }
     } catch {
       // ignore
-    } finally {
-      setIsLoading(false);
     }
+
+    // Static fallback for Netlify/preview hosting
+    let fallback = DEFAULT_NOTES_LIST.filter((n) => n.classGrade === selectedClass);
+    if (selectedSubject !== 'All') {
+      fallback = fallback.filter((n) => n.subject === selectedSubject);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      fallback = fallback.filter(
+        (n) => n.title.toLowerCase().includes(q) || n.description.toLowerCase().includes(q) || n.chapter.toLowerCase().includes(q)
+      );
+    }
+    setNotes(fallback);
+    setIsLoading(false);
   };
 
   useEffect(() => {

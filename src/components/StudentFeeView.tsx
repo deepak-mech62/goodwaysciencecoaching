@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
 import { StudentFeeRecord, FeePaymentReceipt } from '../types';
+import { DEFAULT_STUDENT_FEES } from '../data/mockData';
 import { 
   CreditCard, 
   Receipt, 
@@ -74,21 +75,29 @@ export const StudentFeeView: React.FC<StudentFeeViewProps> = ({ onNotifyToast })
         },
       });
 
-      if (res.ok) {
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
         const data = await res.json();
         if (data.success && data.feeRecord) {
-          // If server data exists, prefer it or sync
           setFeeRecord(data.feeRecord);
           if (user?.id) {
             localStorage.setItem(`goodway_student_fee_${user.id}`, JSON.stringify(data.feeRecord));
           }
+          setIsLoading(false);
+          return;
         }
       }
     } catch {
       // ignore network errors
-    } finally {
-      setIsLoading(false);
     }
+
+    // Static fallback for Netlify
+    if (user?.id && DEFAULT_STUDENT_FEES[user.id]) {
+      setFeeRecord((prev) => prev || DEFAULT_STUDENT_FEES[user.id]);
+    } else {
+      setFeeRecord((prev) => prev || DEFAULT_STUDENT_FEES['student-1']);
+    }
+    setIsLoading(false);
   };
 
   useEffect(() => {

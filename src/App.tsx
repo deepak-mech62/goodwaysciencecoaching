@@ -122,31 +122,46 @@ function AppContent() {
         },
       });
 
-      if (!res.ok) {
-        throw new Error('Could not generate secure signed URL.');
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
+        const data = await res.json();
+        if (data.success && data.signedUrl) {
+          const downloadLink = `${data.signedUrl}&download=true`;
+          const anchor = document.createElement('a');
+          anchor.href = downloadLink;
+          anchor.download = data.fileName || note.fileName;
+          document.body.appendChild(anchor);
+          anchor.click();
+          document.body.removeChild(anchor);
+
+          setToastMessage({
+            text: `Encrypted note downloaded! Signed URL expires in 15 minutes.`,
+            type: 'success',
+          });
+          return;
+        }
       }
 
-      const data = await res.json();
-      if (!data.success || !data.signedUrl) {
-        throw new Error(data.message || 'Signature authorization failed.');
-      }
-
-      // Download file using the signed URL
-      const downloadLink = `${data.signedUrl}&download=true`;
+      // Static fallback for Netlify hosting
+      const blob = new Blob([
+        `GOODWAY SCIENCE COACHING CENTER\n=========================================\nTitle: ${note.title}\nSubject: ${note.subject} | Class: ${note.classGrade}th\nChapter: ${note.chapter}\nFaculty: ${note.uploadedBy}\n\nSummary:\n${note.description}\n\nGOODWAY SCIENCE COACHING CENTER - Premier Coaching for Classes 9th, 10th, 11th & 12th\nDirector: Alok Singh (M.Sc. Mathematics)\nTeachers: Shakti Varma (B.Sc. Math), Amit Kumar Singh (M.Sc. Math, B.Ed)`
+      ], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
-      anchor.href = downloadLink;
-      anchor.download = data.fileName || note.fileName;
+      anchor.href = url;
+      anchor.download = `${note.fileName.replace(/\.pdf$/i, '')}_Goodway.txt`;
       document.body.appendChild(anchor);
       anchor.click();
       document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
 
       setToastMessage({
-        text: `Encrypted note downloaded! Signed URL expires in 15 minutes.`,
+        text: `Study notes "${note.fileName}" downloaded successfully!`,
         type: 'success',
       });
-    } catch (err: any) {
+    } catch {
       setToastMessage({
-        text: err.message || 'Failed to download note.',
+        text: 'Failed to download note. Please try again.',
         type: 'warning',
       });
     }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
 import { NoteItem, StudentRecord, SecurityAuditLog, ClassGrade, SubjectName, StudentFeeRecord, FeePaymentReceipt } from '../types';
+import { DEFAULT_NOTES_LIST, DEFAULT_STUDENTS_LIST, DEFAULT_STUDENT_FEES } from '../data/mockData';
 import { 
   ShieldCheck, 
   Upload, 
@@ -123,17 +124,20 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
       const res = await fetch('/api/notes', {
         headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       });
-      if (res.ok) {
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
         const data = await res.json();
-        if (data.success) {
+        if (data.success && Array.isArray(data.notes)) {
           setNotes(data.notes);
+          setIsLoadingNotes(false);
+          return;
         }
       }
     } catch {
       // ignore
-    } finally {
-      setIsLoadingNotes(false);
     }
+    setNotes(DEFAULT_NOTES_LIST);
+    setIsLoadingNotes(false);
   };
 
   // Fetch Students
@@ -143,73 +147,81 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
       const res = await fetch('/api/students', {
         headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       });
-      if (res.ok) {
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
         const data = await res.json();
-        if (data.success) {
+        if (data.success && Array.isArray(data.students)) {
           setStudents(data.students);
+          setIsLoadingStudents(false);
+          return;
         }
       }
     } catch {
       // ignore
-    } finally {
-      setIsLoadingStudents(false);
     }
+    setStudents(DEFAULT_STUDENTS_LIST);
+    setIsLoadingStudents(false);
   };
 
   // Fetch Fees Overview & Records
   const fetchFees = async () => {
     setIsLoadingFees(true);
+    let records: StudentFeeRecord[] = [];
     try {
       const res = await fetch('/api/fees/summary', {
         headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       });
-      if (res.ok) {
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
         const data = await res.json();
-        if (data.success) {
-          let records: StudentFeeRecord[] = data.feeRecords || [];
-          
-          // Check local storage override for instant synchronization
-          records = records.map((rec) => {
-            const local = localStorage.getItem(`goodway_student_fee_${rec.studentId}`);
-            if (local) {
-              try {
-                return JSON.parse(local);
-              } catch {
-                return rec;
-              }
-            }
-            return rec;
-          });
-
-          // Compute totals
-          let exp = 0, col = 0, due = 0, paid = 0, part = 0, dCount = 0;
-          records.forEach((r) => {
-            exp += r.totalAnnualFee;
-            col += r.totalPaid;
-            due += r.dueAmount;
-            if (r.dueAmount <= 0) paid++;
-            else if (r.totalPaid > 0) part++;
-            else dCount++;
-          });
-
-          setFeeRecords(records);
-          setFeeSummary({
-            totalExpected: exp,
-            totalCollected: col,
-            totalDue: due,
-            paidCount: paid,
-            partialCount: part,
-            dueCount: dCount,
-            totalStudents: records.length,
-            collectionRatePercentage: exp > 0 ? Math.round((col / exp) * 100) : 0,
-          });
+        if (data.success && Array.isArray(data.feeRecords)) {
+          records = data.feeRecords;
         }
       }
     } catch {
       // ignore
-    } finally {
-      setIsLoadingFees(false);
     }
+
+    if (records.length === 0) {
+      records = Object.values(DEFAULT_STUDENT_FEES);
+    }
+    
+    // Check local storage override for instant synchronization
+    records = records.map((rec) => {
+      const local = localStorage.getItem(`goodway_student_fee_${rec.studentId}`);
+      if (local) {
+        try {
+          return JSON.parse(local);
+        } catch {
+          return rec;
+        }
+      }
+      return rec;
+    });
+
+    // Compute totals
+    let exp = 0, col = 0, due = 0, paid = 0, part = 0, dCount = 0;
+    records.forEach((r) => {
+      exp += r.totalAnnualFee;
+      col += r.totalPaid;
+      due += r.dueAmount;
+      if (r.dueAmount <= 0) paid++;
+      else if (r.totalPaid > 0) part++;
+      else dCount++;
+    });
+
+    setFeeRecords(records);
+    setFeeSummary({
+      totalExpected: exp,
+      totalCollected: col,
+      totalDue: due,
+      paidCount: paid,
+      partialCount: part,
+      dueCount: dCount,
+      totalStudents: records.length,
+      collectionRatePercentage: exp > 0 ? Math.round((col / exp) * 100) : 0,
+    });
+    setIsLoadingFees(false);
   };
 
   // Fetch Audit Logs
