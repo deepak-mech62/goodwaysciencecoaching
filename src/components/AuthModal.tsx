@@ -277,14 +277,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </button>
         </form>
 
-      .
+      
 
           <div className="pt-2 text-center text-[11px] text-slate-500 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-1">
             <span>Dir: Alok Singh (M.Sc. Math) • Teachers: Shakti Varma (B.Sc. Math), Amit Kumar Singh (M.Sc. Math, B.Ed)</span>
             <span className="font-semibold text-emerald-700">Design by Deepak Kumar</span>
           </div>
         </div>
-      </div>
+      
     </div>
   );
 };
